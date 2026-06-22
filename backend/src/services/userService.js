@@ -27,10 +27,29 @@ const getAllUsers = async (page = 1, limit = 10) => {
  */
 const getUserById = async (id) => {
   const user = await User.findByPk(id, {
-    attributes: { exclude: ['password', 'resetToken', 'resetExpires'] }
+    attributes: { exclude: ['password', 'resetToken', 'resetExpires', 'resetOtp', 'resetOtpExpires'] }
   });
   if (!user) throw new Error('Người dùng không tồn tại');
   return user;
+};
+
+/**
+ * Cập nhật user theo ID
+ */
+const updateUserById = async (userId, updateData) => {
+  const user = await User.findByPk(userId);
+  if (!user) throw new Error('Người dùng không tồn tại');
+
+  const allowedFields = ['name', 'email', 'phone', 'avatar', 'role', 'language'];
+  Object.keys(updateData).forEach(key => {
+    if (allowedFields.includes(key)) {
+      user[key] = updateData[key];
+    }
+  });
+
+  await user.save();
+  const { password, resetToken, resetExpires, ...userData } = user.toJSON();
+  return userData;
 };
 
 /**
@@ -93,7 +112,7 @@ const deleteUser = async (userId) => {
 };
 
 module.exports = {
-  getAllUsers, getUserById,
+  getAllUsers, getUserById, updateUserById,
   updateProfile, changePassword,
   changeLanguage, deleteUser
 };

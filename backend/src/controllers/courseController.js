@@ -48,6 +48,21 @@ const remove = async (req, res) => {
 
 const enroll = async (req, res) => {
   try {
+    // Teacher và Admin không cần đăng ký - họ có quyền truy cập toàn bộ
+    if (req.user.role === 'teacher' || req.user.role === 'admin') {
+      // Trả về enrollment giả để frontend biết user có quyền truy cập
+      return res.status(201).json({ 
+        success: true, 
+        message: 'Bạn có quyền truy cập toàn bộ khóa học',
+        data: { 
+          userId: req.user.id, 
+          courseId: req.params.id,
+          isAutoEnrolled: true 
+        } 
+      });
+    }
+    
+    // Student phải đăng ký mới xem được
     const enrollment = await courseService.enrollCourse(req.user.id, req.params.id);
     res.status(201).json({ success: true, message: 'Đăng ký khóa học thành công', data: enrollment });
   } catch (error) {

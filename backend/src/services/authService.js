@@ -47,23 +47,47 @@ const generateRefreshToken = (user) => {
  */
 const register = async (userData) => {
   const { name, email, password, role } = userData;
+  const userRole = role || 'student';
 
-  // Kiểm tra email đã tồn tại
-  const existingUser = await User.findOne({ where: { email } });
+  // Kiểm tra email + role đã tồn tại chưa
+  const existingUser = await User.findOne({ where: { email, role: userRole } });
+
   if (existingUser) {
-    throw new Error('Email đã được đăng ký');
+    // Kiểm tra mật khẩu có khớp không
+    const isMatch = await bcrypt.compare(password, existingUser.password);
+    if (isMatch) {
+      // Cùng email + role + password → đăng nhập vào tài khoản cũ
+      const accessToken = generateAccessToken(existingUser);
+      const refreshToken = generateRefreshToken(existingUser);
+      return {
+        user: {
+          id: existingUser.id,
+          name: existingUser.name,
+          email: existingUser.email,
+          role: existingUser.role,
+          avatar: existingUser.avatar,
+          language: existingUser.language
+        },
+        accessToken,
+        refreshToken,
+        isExisting: true // Đánh dấu đây là tài khoản đã có
+      };
+    } else {
+      // Cùng email + role nhưng khác password → báo lỗi
+      throw new Error('Email và chức vụ này đã được đăng ký với mật khẩu khác. Vui lòng dùng mật khẩu cũ hoặc chọn chức vụ khác');
+    }
   }
 
   // Hash password
   const salt = await bcrypt.genSalt(12);
   const hashedPassword = await bcrypt.hash(password, salt);
 
-  // Tạo user
+  // Tạo user mới
   const user = await User.create({
     name,
     email,
     password: hashedPassword,
-    role: role || 'student'
+    role: userRole
   });
 
   // Tạo verification token và gửi email
@@ -135,28 +159,38 @@ const login = async (email, password) => {
  * @returns {Object} { message, email } (không trả OTP để bảo mật)
  */
 const forgotPassword = async (email) => {
-  const user = await User.findOne({ where: { email } });
-  if (!user) {
+  // Tìm tất cả tài khoản có email này
+  const users = await User.findAll({ where: { email } });
+
+  if (users.length === 0) {
     // Không tiết lộ user có tồn tại hay không
-    return { message: 'Nếu email tồn tại, mã OTP đã được gửi' };
+    return { message: 'Nếu email tồn tại, mã OTP đã được gửi', accounts: [] };
   }
 
-  // Tạo mã OTP 6 chữ số
+  // Tạo mã OTP 6 chữ số - chung cho tất cả account
   const otp = generateOtp();
   const otpExpires = new Date(Date.now() + 15 * 60 * 1000); // 15 phút
 
-  // Lưu OTP vào database
-  user.resetOtp = otp;
-  user.resetOtpExpires = otpExpires;
-  user.resetToken = null; // Xóa token cũ nếu có
-  user.resetExpires = null;
-  await user.save();
+  // Lưu OTP vào tất cả các account
+  for (const user of users) {
+    user.resetOtp = otp;
+    user.resetOtpExpires = otpExpires;
+    user.resetToken = null;
+    user.resetExpires = null;
+    await user.save();
+  }
 
-  // Gửi email OTP
+  // Gửi email OTP - chỉ gửi 1 lần
   await sendOtpEmail(email, otp);
-  console.log(`[Auth] OTP sent to ${email}`);
+  console.log(`[Auth] OTP sent to ${email} (${users.length} accounts)`);
 
-  return { message: 'Mã OTP đã được gửi đến email của bạn' };
+  // Trả về danh sách tài khoản để FE hiển thị
+  const accounts = users.map(u => ({
+    role: u.role,
+    name: u.name
+  }));
+
+  return { message: 'Mã OTP đã được gửi đến email của bạn', accounts };
 };
 
 /**
@@ -167,10 +201,17 @@ const forgotPassword = async (email) => {
  * @param {string} otp - Mã OTP 6 chữ số
  * @returns {Object} { resetToken } - Token để đặt lại mật khẩu
  */
-const verifyOtp = async (email, otp) => {
-  const user = await User.findOne({ where: { email } });
-  if (!user) {
-    throw new Error('Email không tồn tại');
+const verifyOtp = async (email, otp, role = null) => {
+  let user;
+
+  if (role) {
+    // Nếu có role, tìm đúng tài khoản theo email + role
+    user = await User.findOne({ where: { email, role } });
+    if (!user) throw new Error('Tài khoản không tồn tại');
+  } else {
+    // Nếu không có role, tìm account đầu tiên (backward compatible)
+    user = await User.findOne({ where: { email } });
+    if (!user) throw new Error('Email không tồn tại');
   }
 
   // Kiểm tra OTP
@@ -191,7 +232,7 @@ const verifyOtp = async (email, otp) => {
   user.resetOtpExpires = null;
   await user.save();
 
-  return { resetToken };
+  return { resetToken, role: user.role, name: user.name };
 };
 
 /**

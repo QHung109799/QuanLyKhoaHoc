@@ -16,9 +16,11 @@ export default function ForgotPasswordPage() {
   const { t } = useTranslation();
   const navigate = useNavigate();
 
-  // Flow states: 'email' | 'otp' | 'done'
+  // Flow states: 'email' | 'select-account' | 'otp' | 'done'
   const [step, setStep] = useState('email');
   const [email, setEmail] = useState('');
+  const [accounts, setAccounts] = useState([]);
+  const [selectedRole, setSelectedRole] = useState(null);
   const [otp, setOtp] = useState('');
   const [loading, setLoading] = useState(false);
   const [resendCooldown, setResendCooldown] = useState(0);
@@ -28,15 +30,35 @@ export default function ForgotPasswordPage() {
     e.preventDefault();
     setLoading(true);
     try {
-      await api.post('/auth/forgot-password', { email });
-      toast.success('Mã OTP đã được gửi đến email của bạn!');
-      setStep('otp');
-      startResendCooldown();
+      const res = await api.post('/auth/forgot-password', { email });
+      const { accounts: accts } = res.data || {};
+
+      if (accts && accts.length > 1) {
+        setAccounts(accts);
+        setStep('select-account');
+        toast.success('Tìm thấy nhiều tài khoản với email này!');
+      } else {
+        toast.success('Mã OTP đã được gửi đến email của bạn!');
+        setStep('otp');
+        startResendCooldown();
+      }
     } catch (err) {
       toast.error(err.response?.data?.message || 'Có lỗi xảy ra');
     } finally {
       setLoading(false);
     }
+  };
+
+  /** Chọn tài khoản để đặt lại mật khẩu */
+  const handleSelectAccount = (role) => {
+    setSelectedRole(role);
+    api.post('/auth/forgot-password', { email }).then(() => {
+      toast.success('Mã OTP đã được gửi đến email của bạn!');
+      setStep('otp');
+      startResendCooldown();
+    }).catch((err) => {
+      toast.error(err.response?.data?.message || 'Có lỗi xảy ra');
+    });
   };
 
   /** Bước 2: Xác thực mã OTP */
@@ -47,11 +69,10 @@ export default function ForgotPasswordPage() {
     }
     setLoading(true);
     try {
-      const res = await api.post('/auth/verify-otp', { email, otp });
+      const res = await api.post('/auth/verify-otp', { email, otp, role: selectedRole });
       const resetToken = res.data?.data?.resetToken;
       if (resetToken) {
         toast.success('Xác thực OTP thành công!');
-        // Chuyển sang trang đặt mật khẩu mới với resetToken
         navigate(`/reset-password/${resetToken}`);
       }
     } catch (err) {
@@ -105,6 +126,53 @@ export default function ForgotPasswordPage() {
     );
   }
 
+  /** Chọn tài khoản (khi email có nhiều account) */
+  if (step === 'select-account') {
+    return (
+      <div className="space-y-5">
+        <div>
+          <h2 className="text-2xl font-bold text-gray-900">Chọn tài khoản</h2>
+          <p className="text-gray-500 text-sm mt-1">
+            Email <strong className="text-gray-700">{email}</strong> có nhiều tài khoản. Vui lòng chọn tài khoản cần đặt lại mật khẩu:
+          </p>
+        </div>
+        <div className="space-y-3">
+          {accounts.map((acc) => (
+            <button
+              key={acc.role}
+              onClick={() => handleSelectAccount(acc.role)}
+              className="w-full flex items-center p-4 rounded-xl border-2 border-gray-200 hover:border-primary-500 hover:bg-primary-50 transition-all text-left"
+            >
+              <div className={`w-10 h-10 rounded-lg flex items-center justify-center mr-3 ${
+                acc.role === 'admin' ? 'bg-purple-100 text-purple-600' :
+                acc.role === 'teacher' ? 'bg-blue-100 text-blue-600' :
+                'bg-green-100 text-green-600'
+              }`}>
+                {acc.role === 'admin' ? '🔧' : acc.role === 'teacher' ? '📚' : '🎓'}
+              </div>
+              <div>
+                <p className="font-semibold text-gray-900">{acc.name}</p>
+                <p className="text-sm text-gray-500 capitalize">
+                  {acc.role === 'admin' ? 'Quản trị viên' : acc.role === 'teacher' ? 'Giảng viên' : 'Sinh viên'}
+                </p>
+              </div>
+              <span className="ml-auto text-gray-400">→</span>
+            </button>
+          ))}
+        </div>
+        <p className="text-center text-sm text-gray-500">
+          <button
+            type="button"
+            onClick={() => { setStep('email'); setSelectedRole(null); }}
+            className="text-primary-600 font-medium hover:text-primary-700"
+          >
+            ← Quay lại nhập email khác
+          </button>
+        </p>
+      </div>
+    );
+  }
+
   /** Form nhập mã OTP */
   if (step === 'otp') {
     return (
@@ -116,7 +184,6 @@ export default function ForgotPasswordPage() {
           </p>
         </div>
 
-        {/* Hiển thị ô nhập OTP */}
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1.5">Mã OTP</label>
           <input
@@ -139,12 +206,9 @@ export default function ForgotPasswordPage() {
           {loading ? t('common.loading') : 'Xác nhận OTP'}
         </button>
 
-        {/* Gửi lại OTP */}
         <div className="text-center">
           {resendCooldown > 0 ? (
-            <p className="text-sm text-gray-400">
-              Gửi lại sau {resendCooldown}s
-            </p>
+            <p className="text-sm text-gray-400">Gửi lại sau {resendCooldown}s</p>
           ) : (
             <button
               type="button"

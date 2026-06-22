@@ -19,6 +19,15 @@ const getById = async (req, res) => {
   }
 };
 
+const updateById = async (req, res) => {
+  try {
+    const user = await userService.updateUserById(req.params.id, req.body);
+    res.json({ success: true, message: 'Cập nhật người dùng thành công', data: user });
+  } catch (error) {
+    res.status(400).json({ success: false, message: error.message });
+  }
+};
+
 const updateProfile = async (req, res) => {
   try {
     const user = await userService.updateProfile(req.user.id, req.body);
@@ -57,4 +66,4 @@ const deleteUser = async (req, res) => {
   }
 };
 
-module.exports = { getAll, getById, updateProfile, changePassword, changeLanguage, deleteUser };
+module.exports = { getAll, getById, updateById, updateProfile, changePassword, changeLanguage, deleteUser };

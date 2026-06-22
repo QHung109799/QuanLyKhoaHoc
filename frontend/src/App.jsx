@@ -23,7 +23,10 @@ import GradesPage from './pages/grades/GradesPage';
 import ProfilePage from './pages/profile/ProfilePage';
 import DiscussionPage from './pages/discussion/DiscussionPage';
 import PaymentPage from './pages/payment/PaymentPage';
+import PaymentResultPage from './pages/payment/PaymentResultPage';
+import PaymentHistoryPage from './pages/payment/PaymentHistoryPage';
 import NotificationsPage from './pages/notifications/NotificationsPage';
+import CreateCoursePage from './pages/course/CreateCoursePage';
 
 // Protected Route Component
 const ProtectedRoute = ({ children, allowedRoles }) => {
@@ -74,7 +77,14 @@ export default function App() {
         <Route path="profile" element={<ProfilePage />} />
         <Route path="discussions/:courseId" element={<DiscussionPage />} />
         <Route path="payment/:courseId" element={<PaymentPage />} />
+        <Route path="payment/result" element={<PaymentResultPage />} />
+        <Route path="payment/history" element={<PaymentHistoryPage />} />
         <Route path="notifications" element={<NotificationsPage />} />
+        <Route path="create-course" element={
+          <ProtectedRoute allowedRoles={['teacher', 'admin']}>
+            <CreateCoursePage />
+          </ProtectedRoute>
+        } />
       </Route>
 
       {/* 404 */}

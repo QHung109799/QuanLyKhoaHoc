@@ -17,7 +17,7 @@ USE quanlykhoahoc;
 CREATE TABLE IF NOT EXISTS users (
   id            INT           AUTO_INCREMENT PRIMARY KEY,
   name          VARCHAR(100)  NOT NULL,
-  email         VARCHAR(100)  NOT NULL UNIQUE,
+  email         VARCHAR(100)  NOT NULL,
   password      VARCHAR(255)  NOT NULL,
   role          ENUM('admin','teacher','student') NOT NULL DEFAULT 'student',
   avatar        VARCHAR(255)  DEFAULT NULL,
@@ -30,6 +30,7 @@ CREATE TABLE IF NOT EXISTS users (
   updated_at    TIMESTAMP     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   INDEX idx_users_role (role),
   INDEX idx_users_email (email)
+  UNIQUE KEY uq_email_role (email, role)  -- 1 email chỉ được 1 role duy nhất
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ============================================================

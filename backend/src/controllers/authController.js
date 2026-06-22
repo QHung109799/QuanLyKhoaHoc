@@ -70,7 +70,8 @@ const forgotPassword = async (req, res) => {
     const result = await authService.forgotPassword(email);
     res.json({
       success: true,
-      message: result.message
+      message: result.message,
+      data: result
     });
   } catch (error) {
     res.status(400).json({
@@ -88,18 +89,18 @@ const forgotPassword = async (req, res) => {
  */
 const verifyOtp = async (req, res) => {
   try {
-    const { email, otp } = req.body;
+    const { email, otp, role } = req.body;
     if (!email || !otp) {
       return res.status(400).json({
         success: false,
         message: 'Vui lòng nhập email và mã OTP'
       });
     }
-    const result = await authService.verifyOtp(email, otp);
+    const result = await authService.verifyOtp(email, otp, role || null);
     res.json({
       success: true,
       message: 'Xác thực OTP thành công',
-      data: { resetToken: result.resetToken }
+      data: { resetToken: result.resetToken, role: result.role, name: result.name }
     });
   } catch (error) {
     res.status(400).json({
