@@ -68,3 +68,132 @@ Future Improvements
 •	Cho phép đính kèm hình ảnh khi đánh giá.
 •	Hiển thị Top khóa học được đánh giá cao nhất.
 
+# Test Cases - Review & Rating Feature
+
+## TC01 - Create Review Successfully
+
+Input:
+
+```json
+{
+    "courseId": 1,
+    "rating": 5,
+    "comment": "Khóa học rất hay"
+}
+```
+
+Expected Result:
+
+* HTTP Status: 201
+* Review được tạo thành công.
+
+---
+
+## TC02 - Create Review Without Rating
+
+Input:
+
+```json
+{
+    "courseId": 1,
+    "comment": "Khóa học tốt"
+}
+```
+
+Expected Result:
+
+* HTTP Status: 400
+* Message: Rating is required.
+
+---
+
+## TC03 - Create Review With Invalid Rating
+
+Input:
+
+```json
+{
+    "courseId": 1,
+    "rating": 10
+}
+```
+
+Expected Result:
+
+* HTTP Status: 400
+* Message: Rating must be between 1 and 5.
+
+---
+
+## TC04 - Student Reviews Same Course Twice
+
+Expected Result:
+
+* HTTP Status: 409
+* Message: Review already exists.
+
+---
+
+## TC05 - Review Course Not Enrolled
+
+Expected Result:
+
+* HTTP Status: 403
+* Message: User is not enrolled in this course.
+
+---
+
+## TC06 - Get Reviews By Course
+
+Request:
+
+GET /api/reviews/course/1
+
+Expected Result:
+
+* HTTP Status: 200
+* Trả về danh sách đánh giá của khóa học.
+
+---
+
+## TC07 - Get Reviews For Invalid Course
+
+Request:
+
+GET /api/reviews/course/9999
+
+Expected Result:
+
+* HTTP Status: 404
+* Message: Course not found.
+
+---
+
+## TC08 - Update Review Successfully
+
+Expected Result:
+
+* HTTP Status: 200
+* Review được cập nhật thành công.
+
+---
+
+## TC09 - Delete Review Successfully
+
+Expected Result:
+
+* HTTP Status: 200
+* Review được xóa thành công.
+
+---
+
+## TC10 - Calculate Average Rating
+
+Expected Result:
+
+* HTTP Status: 200
+* Trả về điểm đánh giá trung bình chính xác của khóa học.
+
+```
+```
+
